@@ -428,4 +428,121 @@ describe('usePdfStore', () => {
       expect(pagesBefore[0].rotation).toBe(0);
     });
   });
+
+  // ==================== undo/redo ====================
+  describe('undo/redo', () => {
+    it('should undo the last operation', () => {
+      act(() => { result.current.addSource(makeSource(), ['a']); });
+      expect(result.current.pages).toHaveLength(1);
+
+      act(() => { result.current.undo(); });
+      expect(result.current.pages).toHaveLength(0);
+    });
+
+    it('should redo an undone operation', () => {
+      act(() => { result.current.addSource(makeSource(), ['a']); });
+      expect(result.current.pages).toHaveLength(1);
+
+      act(() => { result.current.undo(); });
+      expect(result.current.pages).toHaveLength(0);
+
+      act(() => { result.current.redo(); });
+      expect(result.current.pages).toHaveLength(1);
+      expect(result.current.pages[0].id).toBe('a');
+    });
+
+    it('should clear redo stack when new operation is performed', () => {
+      act(() => { result.current.addSource(makeSource({ name: 'A.pdf' }), ['a']); });
+      act(() => { result.current.addSource(makeSource({ name: 'B.pdf' }), ['b']); });
+      expect(result.current.pages).toHaveLength(2);
+
+      act(() => { result.current.undo(); });
+      expect(result.current.pages).toHaveLength(1);
+      expect(result.current.pages[0].id).toBe('a');
+
+      act(() => { result.current.addSource(makeSource({ name: 'C.pdf' }), ['c']); });
+      expect(result.current.pages).toHaveLength(2);
+      expect(result.current.pages[1].id).toBe('c');
+
+      act(() => { result.current.redo(); });
+      expect(result.current.pages).toHaveLength(2);
+      expect(result.current.pages[1].id).toBe('c');
+    });
+
+    it('should not change selectedIds on undo', () => {
+      act(() => { result.current.addSource(makeSource(), ['a']); });
+      act(() => { result.current.selectPage('a'); });
+      expect(result.current.selectedIds.has('a')).toBe(true);
+
+      act(() => { result.current.undo(); });
+      expect(result.current.selectedIds.has('a')).toBe(true);
+    });
+
+    it('should handle multiple undos', () => {
+      act(() => { result.current.addSource(makeSource(), ['a']); });
+      act(() => { result.current.addSource(makeSource(), ['b']); });
+      act(() => { result.current.addSource(makeSource(), ['c']); });
+      expect(result.current.pages).toHaveLength(3);
+
+      act(() => { result.current.undo(); });
+      expect(result.current.pages).toHaveLength(2);
+
+      act(() => { result.current.undo(); });
+      expect(result.current.pages).toHaveLength(1);
+      expect(result.current.pages[0].id).toBe('a');
+    });
+
+    it('should handle undo after clearAll', () => {
+      act(() => { result.current.addSource(makeSource(), ['a']); });
+      expect(result.current.pages).toHaveLength(1);
+
+      act(() => { result.current.clearAll(); });
+      expect(result.current.pages).toHaveLength(0);
+
+      act(() => { result.current.undo(); });
+      expect(result.current.pages).toHaveLength(1);
+      expect(result.current.pages[0].id).toBe('a');
+    });
+  });
+
+  // ==================== batch operations ====================
+  describe('batch operations', () => {
+    beforeEach(() => {
+      act(() => { result.current.addSource(makeSource({ pageCount: 3 }), ['a', 'b', 'c']); });
+    });
+
+    it('should create only one history entry for batch rotation', () => {
+      act(() => { result.current.beginTransaction(); });
+      act(() => { result.current.updatePageRotation('a', 90); });
+      act(() => { result.current.updatePageRotation('b', 180); });
+      act(() => { result.current.updatePageRotation('c', 270); });
+      act(() => { result.current.commitTransaction(); });
+
+      expect(result.current.pages[0].rotation).toBe(90);
+      expect(result.current.pages[1].rotation).toBe(180);
+      expect(result.current.pages[2].rotation).toBe(270);
+
+      act(() => { result.current.undo(); });
+      expect(result.current.pages[0].rotation).toBe(0);
+      expect(result.current.pages[1].rotation).toBe(0);
+      expect(result.current.pages[2].rotation).toBe(0);
+    });
+
+    it('should create only one history entry for batch flip', () => {
+      act(() => { result.current.beginTransaction(); });
+      act(() => { result.current.togglePageFlipH('a'); });
+      act(() => { result.current.togglePageFlipH('b'); });
+      act(() => { result.current.togglePageFlipH('c'); });
+      act(() => { result.current.commitTransaction(); });
+
+      expect(result.current.pages[0].flipH).toBe(true);
+      expect(result.current.pages[1].flipH).toBe(true);
+      expect(result.current.pages[2].flipH).toBe(true);
+
+      act(() => { result.current.undo(); });
+      expect(result.current.pages[0].flipH).toBe(false);
+      expect(result.current.pages[1].flipH).toBe(false);
+      expect(result.current.pages[2].flipH).toBe(false);
+    });
+  });
 });

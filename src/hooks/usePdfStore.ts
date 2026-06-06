@@ -1,16 +1,50 @@
 import { useState, useCallback, useRef } from 'react';
+import { useHistory } from './useHistory';
 import type { PageInfo, PdfSource } from '../types';
 
+type DocumentState = {
+  pages: PageInfo[];
+  sources: PdfSource[];
+  thumbnailMap: Map<string, string>;
+  nextSourceIndex: number;
+};
+
 export function usePdfStore() {
-  const [pages, setPages] = useState<PageInfo[]>([]);
-  const [sources, setSources] = useState<PdfSource[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [thumbnailMap, setThumbnailMap] = useState<Map<string, string>>(new Map());
   const sourceIndexRef = useRef(0);
+  const inTransactionRef = useRef(false);
+
+  const history = useHistory<DocumentState>({
+    pages: [],
+    sources: [],
+    thumbnailMap: new Map(),
+    nextSourceIndex: 0,
+  });
+
+  const { pages, sources, thumbnailMap, nextSourceIndex } = history.state;
+
+  const pushIfNotInTransaction = useCallback(() => {
+    if (!inTransactionRef.current) {
+      history.push(history.getState());
+    }
+  }, [history]);
+
+  const beginTransaction = useCallback(() => {
+    if (!inTransactionRef.current) {
+      history.push(history.getState());
+      inTransactionRef.current = true;
+    }
+  }, [history]);
+
+  const commitTransaction = useCallback(() => {
+    inTransactionRef.current = false;
+  }, []);
 
   const addSource = useCallback((source: PdfSource, pageIds: string[]) => {
-    const sourceIndex = sourceIndexRef.current;
-    sourceIndexRef.current += 1;
+    pushIfNotInTransaction();
+
+    const state = history.getState();
+    const sourceIndex = state.nextSourceIndex;
 
     const newPages: PageInfo[] = pageIds.map((id, i) => ({
       id,
@@ -20,53 +54,96 @@ export function usePdfStore() {
       flipH: false,
       flipV: false,
     }));
-    setPages(p => [...p, ...newPages]);
-    setSources(prev => [...prev, source]);
-  }, []);
+
+    history.setState({
+      ...state,
+      pages: [...state.pages, ...newPages],
+      sources: [...state.sources, source],
+      nextSourceIndex: sourceIndex + 1,
+    });
+
+    sourceIndexRef.current = sourceIndex + 1;
+  }, [pushIfNotInTransaction, history]);
 
   const setThumbnails = useCallback((entries: [string, string][]) => {
-    setThumbnailMap(prev => {
-      const next = new Map(prev);
-      entries.forEach(([id, url]) => next.set(id, url));
-      return next;
+    const state = history.getState();
+    history.setState({
+      ...state,
+      thumbnailMap: new Map([...state.thumbnailMap, ...entries]),
     });
-  }, []);
+  }, [history]);
 
   const removePages = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+
+    pushIfNotInTransaction();
+
+    const state = history.getState();
     const idSet = new Set(ids);
-    setPages(prev => prev.filter(p => !idSet.has(p.id)));
+    history.setState({
+      ...state,
+      pages: state.pages.filter(p => !idSet.has(p.id)),
+      thumbnailMap: new Map(
+        [...state.thumbnailMap].filter(([id]) => !idSet.has(id))
+      ),
+    });
+
     setSelectedIds(prev => {
       const next = new Set(prev);
       ids.forEach(id => next.delete(id));
       return next;
     });
-    setThumbnailMap(prev => {
-      const next = new Map(prev);
-      ids.forEach(id => next.delete(id));
-      return next;
-    });
-  }, []);
+  }, [pushIfNotInTransaction]);
 
   const updatePageRotation = useCallback((id: string, rotation: 0 | 90 | 180 | 270) => {
-    setPages(prev => prev.map(p => p.id === id ? { ...p, rotation } : p));
-  }, []);
+    pushIfNotInTransaction();
+
+    const state = history.getState();
+    history.setState({
+      ...state,
+      pages: state.pages.map(p =>
+        p.id === id ? { ...p, rotation } : p
+      ),
+    });
+  }, [pushIfNotInTransaction]);
 
   const togglePageFlipH = useCallback((id: string) => {
-    setPages(prev => prev.map(p => p.id === id ? { ...p, flipH: !p.flipH } : p));
-  }, []);
+    pushIfNotInTransaction();
+
+    const state = history.getState();
+    history.setState({
+      ...state,
+      pages: state.pages.map(p =>
+        p.id === id ? { ...p, flipH: !p.flipH } : p
+      ),
+    });
+  }, [pushIfNotInTransaction]);
 
   const togglePageFlipV = useCallback((id: string) => {
-    setPages(prev => prev.map(p => p.id === id ? { ...p, flipV: !p.flipV } : p));
-  }, []);
+    pushIfNotInTransaction();
+
+    const state = history.getState();
+    history.setState({
+      ...state,
+      pages: state.pages.map(p =>
+        p.id === id ? { ...p, flipV: !p.flipV } : p
+      ),
+    });
+  }, [pushIfNotInTransaction]);
 
   const reorderPages = useCallback((fromIndex: number, toIndex: number) => {
-    setPages(prev => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
+    pushIfNotInTransaction();
+
+    const state = history.getState();
+    const next = [...state.pages];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+
+    history.setState({
+      ...state,
+      pages: next,
     });
-  }, []);
+  }, [pushIfNotInTransaction]);
 
   const selectPage = useCallback((id: string, multi = false, range = false) => {
     setSelectedIds(prev => {
@@ -99,27 +176,45 @@ export function usePdfStore() {
   }, []);
 
   const resetPageTransform = useCallback((id: string) => {
-    setPages(prev => prev.map(p =>
-      p.id === id ? { ...p, rotation: 0 as const, flipH: false, flipV: false } : p
-    ));
-  }, []);
+    pushIfNotInTransaction();
+
+    const state = history.getState();
+    history.setState({
+      ...state,
+      pages: state.pages.map(p =>
+        p.id === id ? { ...p, rotation: 0 as const, flipH: false, flipV: false } : p
+      ),
+    });
+  }, [pushIfNotInTransaction]);
 
   const resetPageOrder = useCallback(() => {
-    setPages(prev => [...prev].sort((a, b) => {
-      if (a.sourcePdfIndex !== b.sourcePdfIndex) {
-        return a.sourcePdfIndex - b.sourcePdfIndex;
-      }
-      return a.sourcePageIndex - b.sourcePageIndex;
-    }));
-  }, []);
+    pushIfNotInTransaction();
+
+    const state = history.getState();
+    history.setState({
+      ...state,
+      pages: [...state.pages].sort((a, b) => {
+        if (a.sourcePdfIndex !== b.sourcePdfIndex) {
+          return a.sourcePdfIndex - b.sourcePdfIndex;
+        }
+        return a.sourcePageIndex - b.sourcePageIndex;
+      }),
+    });
+  }, [pushIfNotInTransaction]);
 
   const clearAll = useCallback(() => {
-    setPages([]);
-    setSources([]);
+    pushIfNotInTransaction();
+
+    history.setState({
+      pages: [],
+      sources: [],
+      thumbnailMap: new Map(),
+      nextSourceIndex: 0,
+    });
+
     setSelectedIds(new Set());
-    setThumbnailMap(new Map());
     sourceIndexRef.current = 0;
-  }, []);
+  }, [pushIfNotInTransaction]);
 
   return {
     pages,
@@ -138,5 +233,11 @@ export function usePdfStore() {
     selectPage,
     clearSelection,
     clearAll,
+    undo: history.undo,
+    redo: history.redo,
+    canUndo: history.canUndo,
+    canRedo: history.canRedo,
+    beginTransaction,
+    commitTransaction,
   };
 }
