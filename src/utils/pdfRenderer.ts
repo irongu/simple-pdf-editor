@@ -1,10 +1,10 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Set worker - use the same version bundled with pdfjs-dist
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+// Set worker - Vite handles the URL for both dev and production
+// Note: When opening via file:// protocol, worker may not load due to CORS.
+// In that case PDF.js falls back to main-thread rendering (slower but works).
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const THUMBNAIL_WIDTH = 200;
 

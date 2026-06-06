@@ -140,7 +140,7 @@ function App() {
       if (page) updatePageRotation(id, ((page.rotation + 90) % 360) as 0 | 90 | 180 | 270);
     });
     commitTransaction();
-  }, [pages, selectedIds, updatePageRotation, getSelectedIds, beginTransaction, commitTransaction]);
+  }, [pages, updatePageRotation, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleRotateCCW = useCallback(() => {
     beginTransaction();
@@ -149,7 +149,7 @@ function App() {
       if (page) updatePageRotation(id, ((page.rotation + 270) % 360) as 0 | 90 | 180 | 270);
     });
     commitTransaction();
-  }, [pages, selectedIds, updatePageRotation, getSelectedIds, beginTransaction, commitTransaction]);
+  }, [pages, updatePageRotation, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleRotate180 = useCallback(() => {
     beginTransaction();
@@ -158,30 +158,30 @@ function App() {
       if (page) updatePageRotation(id, ((page.rotation + 180) % 360) as 0 | 90 | 180 | 270);
     });
     commitTransaction();
-  }, [pages, selectedIds, updatePageRotation, getSelectedIds, beginTransaction, commitTransaction]);
+  }, [pages, updatePageRotation, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleFlipH = useCallback(() => {
     beginTransaction();
     getSelectedIds().forEach(id => togglePageFlipH(id));
     commitTransaction();
-  }, [selectedIds, togglePageFlipH, getSelectedIds, beginTransaction, commitTransaction]);
+  }, [togglePageFlipH, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleFlipV = useCallback(() => {
     beginTransaction();
     getSelectedIds().forEach(id => togglePageFlipV(id));
     commitTransaction();
-  }, [selectedIds, togglePageFlipV, getSelectedIds, beginTransaction, commitTransaction]);
+  }, [togglePageFlipV, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleDelete = useCallback(() => {
     removePages(getSelectedIds());
-  }, [selectedIds, removePages, getSelectedIds]);
+  }, [removePages, getSelectedIds]);
 
   const handleReset = useCallback(() => {
     beginTransaction();
     getSelectedIds().forEach(id => resetPageTransform(id));
     resetPageOrder();
     commitTransaction();
-  }, [selectedIds, resetPageTransform, resetPageOrder, getSelectedIds, beginTransaction, commitTransaction]);
+  }, [resetPageTransform, resetPageOrder, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleExportPdf = useCallback(async () => {
     if (pages.length === 0) return;
