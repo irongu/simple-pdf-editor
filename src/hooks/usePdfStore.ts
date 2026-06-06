@@ -21,7 +21,7 @@ export function usePdfStore() {
     nextSourceIndex: 0,
   });
 
-  const { pages, sources, thumbnailMap, nextSourceIndex } = history.state;
+  const { pages, sources, thumbnailMap } = history.state;
 
   const pushIfNotInTransaction = useCallback(() => {
     if (!inTransactionRef.current) {

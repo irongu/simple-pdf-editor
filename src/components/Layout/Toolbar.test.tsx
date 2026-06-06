@@ -16,10 +16,14 @@ describe('Toolbar', () => {
     onExportSelected: vi.fn(),
     onDelete: vi.fn(),
     onReset: vi.fn(),
+    onUndo: vi.fn(),
+    onRedo: vi.fn(),
     hasSelection: false,
     hasPages: false,
     flipHActive: false,
     flipVActive: false,
+    canUndo: false,
+    canRedo: false,
   };
 
   describe('file operations', () => {
@@ -186,6 +190,42 @@ describe('Toolbar', () => {
       render(<Toolbar {...defaultProps} onReset={onReset} hasSelection={true} />);
       await userEvent.click(screen.getByRole('button', { name: '重置变换' }));
       expect(onReset).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('undo/redo', () => {
+    it('should disable undo button when canUndo is false', () => {
+      render(<Toolbar {...defaultProps} canUndo={false} />);
+      expect(screen.getByRole('button', { name: '撤销' })).toBeDisabled();
+    });
+
+    it('should enable undo button when canUndo is true', () => {
+      render(<Toolbar {...defaultProps} canUndo={true} />);
+      expect(screen.getByRole('button', { name: '撤销' })).not.toBeDisabled();
+    });
+
+    it('should disable redo button when canRedo is false', () => {
+      render(<Toolbar {...defaultProps} canRedo={false} />);
+      expect(screen.getByRole('button', { name: '重做' })).toBeDisabled();
+    });
+
+    it('should enable redo button when canRedo is true', () => {
+      render(<Toolbar {...defaultProps} canRedo={true} />);
+      expect(screen.getByRole('button', { name: '重做' })).not.toBeDisabled();
+    });
+
+    it('should call onUndo when undo button clicked', async () => {
+      const onUndo = vi.fn();
+      render(<Toolbar {...defaultProps} onUndo={onUndo} canUndo={true} />);
+      await userEvent.click(screen.getByRole('button', { name: '撤销' }));
+      expect(onUndo).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onRedo when redo button clicked', async () => {
+      const onRedo = vi.fn();
+      render(<Toolbar {...defaultProps} onRedo={onRedo} canRedo={true} />);
+      await userEvent.click(screen.getByRole('button', { name: '重做' }));
+      expect(onRedo).toHaveBeenCalledTimes(1);
     });
   });
 });
