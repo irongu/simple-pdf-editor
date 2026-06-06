@@ -32,6 +32,9 @@ jobs:
 
       - name: Package dist
         run: |
+          # Ensure start scripts are included in dist
+          cp start-server.bat dist/ 2>/dev/null || true
+          cp start-server.ps1 dist/ 2>/dev/null || true
           cd dist
           zip -r ../simple-pdf-editor-${{ github.ref_name }}.zip .
 
