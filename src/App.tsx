@@ -19,7 +19,8 @@ function App() {
   const { pages, selectedIds, thumbnailMap, sources, addSource, setThumbnails,
     removePages, updatePageRotation,
     togglePageFlipH, togglePageFlipV, reorderPages, selectPage,
-    clearSelection, resetPageTransform, resetPageOrder, clearAll } = store;
+    clearSelection, resetPageTransform, resetPageOrder, clearAll,
+    undo, redo, canUndo, canRedo, beginTransaction, commitTransaction } = store;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,42 +134,54 @@ function App() {
   const getSelectedIds = useCallback(() => Array.from(selectedIds), [selectedIds]);
 
   const handleRotateCW = useCallback(() => {
+    beginTransaction();
     getSelectedIds().forEach(id => {
       const page = pages.find(p => p.id === id);
       if (page) updatePageRotation(id, ((page.rotation + 90) % 360) as 0 | 90 | 180 | 270);
     });
-  }, [pages, selectedIds, updatePageRotation, getSelectedIds]);
+    commitTransaction();
+  }, [pages, selectedIds, updatePageRotation, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleRotateCCW = useCallback(() => {
+    beginTransaction();
     getSelectedIds().forEach(id => {
       const page = pages.find(p => p.id === id);
       if (page) updatePageRotation(id, ((page.rotation + 270) % 360) as 0 | 90 | 180 | 270);
     });
-  }, [pages, selectedIds, updatePageRotation, getSelectedIds]);
+    commitTransaction();
+  }, [pages, selectedIds, updatePageRotation, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleRotate180 = useCallback(() => {
+    beginTransaction();
     getSelectedIds().forEach(id => {
       const page = pages.find(p => p.id === id);
       if (page) updatePageRotation(id, ((page.rotation + 180) % 360) as 0 | 90 | 180 | 270);
     });
-  }, [pages, selectedIds, updatePageRotation, getSelectedIds]);
+    commitTransaction();
+  }, [pages, selectedIds, updatePageRotation, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleFlipH = useCallback(() => {
+    beginTransaction();
     getSelectedIds().forEach(id => togglePageFlipH(id));
-  }, [selectedIds, togglePageFlipH, getSelectedIds]);
+    commitTransaction();
+  }, [selectedIds, togglePageFlipH, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleFlipV = useCallback(() => {
+    beginTransaction();
     getSelectedIds().forEach(id => togglePageFlipV(id));
-  }, [selectedIds, togglePageFlipV, getSelectedIds]);
+    commitTransaction();
+  }, [selectedIds, togglePageFlipV, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleDelete = useCallback(() => {
     removePages(getSelectedIds());
   }, [selectedIds, removePages, getSelectedIds]);
 
   const handleReset = useCallback(() => {
+    beginTransaction();
     getSelectedIds().forEach(id => resetPageTransform(id));
     resetPageOrder();
-  }, [selectedIds, resetPageTransform, resetPageOrder, getSelectedIds]);
+    commitTransaction();
+  }, [selectedIds, resetPageTransform, resetPageOrder, getSelectedIds, beginTransaction, commitTransaction]);
 
   const handleExportPdf = useCallback(async () => {
     if (pages.length === 0) return;
@@ -230,6 +243,24 @@ function App() {
             selectedArr.forEach(id => togglePageFlipV(id));
           }
           break;
+        case 'z':
+        case 'Z':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            if (e.shiftKey) {
+              redo();
+            } else {
+              undo();
+            }
+          }
+          break;
+        case 'y':
+        case 'Y':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            redo();
+          }
+          break;
         case 'Escape':
           clearSelection();
           break;
@@ -238,7 +269,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pages, selectedIds, removePages, updatePageRotation, togglePageFlipH, togglePageFlipV, clearSelection]);
+  }, [pages, selectedIds, removePages, updatePageRotation, togglePageFlipH, togglePageFlipV, clearSelection, undo, redo]);
 
   return (
     <>
@@ -255,10 +286,14 @@ function App() {
         onExportSelected={handleExportSelected}
         onDelete={handleDelete}
         onReset={handleReset}
+        onUndo={undo}
+        onRedo={redo}
         hasSelection={selectedIds.size > 0}
         hasPages={pages.length > 0}
         flipHActive={flipHActive}
         flipVActive={flipVActive}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
       <main
         className="flex-1 bg-apple-canvas-parchment flex gap-6 p-6 overflow-auto min-h-0 relative"

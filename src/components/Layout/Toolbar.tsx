@@ -10,10 +10,14 @@ interface ToolbarProps {
   onExportSelected: () => void;
   onDelete: () => void;
   onReset: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
   hasSelection: boolean;
   hasPages: boolean;
   flipHActive: boolean;
   flipVActive: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export function Toolbar({
@@ -22,8 +26,10 @@ export function Toolbar({
   onFlipH, onFlipV,
   onExportPdf, onExportSelected,
   onDelete, onReset,
+  onUndo, onRedo,
   hasSelection, hasPages,
   flipHActive, flipVActive,
+  canUndo, canRedo,
 }: ToolbarProps) {
   return (
     <div className="h-[52px] bg-apple-canvas-parchment border-b border-apple-hairline flex items-center px-6 gap-1 shrink-0 select-none">
@@ -36,6 +42,18 @@ export function Toolbar({
         <button onClick={onAppendPdf} className="apple-btn-pearl text-[14px] font-semibold tracking-[-0.224px]" aria-label="追加 PDF" disabled={!hasPages}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           <span>追加 PDF</span>
+        </button>
+      </div>
+
+      <div className="w-px h-6 bg-apple-hairline mx-3" />
+
+      {/* Undo / Redo */}
+      <div className="flex items-center gap-1.5">
+        <button onClick={onUndo} className="apple-btn-icon w-[44px] h-[44px]" aria-label="撤销" title="撤销" disabled={!canUndo}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        </button>
+        <button onClick={onRedo} className="apple-btn-icon w-[44px] h-[44px]" aria-label="重做" title="重做" disabled={!canRedo}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         </button>
       </div>
 
